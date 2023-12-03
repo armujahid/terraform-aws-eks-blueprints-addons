@@ -64,6 +64,7 @@ module "eks" {
   cluster_name                   = local.name
   cluster_version                = "1.28"
   cluster_endpoint_public_access = true
+  cluster_endpoint_private_access = true
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -76,19 +77,19 @@ module "eks" {
 
       min_size     = 2
       max_size     = 10
-      desired_size = 3
+      desired_size = 2
     }
   }
 
-  self_managed_node_groups = {
-    default = {
-      instance_type = "m5.large"
+  # self_managed_node_groups = {
+  #   default = {
+  #     instance_type = "m5.large"
 
-      min_size     = 2
-      max_size     = 10
-      desired_size = 3
-    }
-  }
+  #     min_size     = 2
+  #     max_size     = 10
+  #     desired_size = 3
+  #   }
+  # }
 
   tags = local.tags
 }
@@ -122,32 +123,32 @@ module "eks_blueprints_addons" {
       most_recent = true
     }
     kube-proxy = {}
-    adot = {
-      most_recent              = true
-      service_account_role_arn = module.adot_irsa.iam_role_arn
-    }
-    aws-guardduty-agent = {}
+    # adot = {
+    #   most_recent              = true
+    #   service_account_role_arn = module.adot_irsa.iam_role_arn
+    # }
+    # aws-guardduty-agent = {}
   }
 
-  enable_aws_efs_csi_driver                    = true
-  enable_aws_fsx_csi_driver                    = true
-  enable_argocd                                = true
-  enable_argo_rollouts                         = true
-  enable_argo_workflows                        = true
-  enable_aws_cloudwatch_metrics                = true
-  enable_aws_privateca_issuer                  = true
-  enable_cert_manager                          = true
-  enable_cluster_autoscaler                    = true
-  enable_secrets_store_csi_driver              = true
-  enable_secrets_store_csi_driver_provider_aws = true
-  enable_kube_prometheus_stack                 = true
-  enable_external_dns                          = true
-  enable_external_secrets                      = true
-  enable_gatekeeper                            = true
-  enable_ingress_nginx                         = true
+  # enable_aws_efs_csi_driver                    = true
+  # enable_aws_fsx_csi_driver                    = true
+  # enable_argocd                                = true
+  # enable_argo_rollouts                         = true
+  # enable_argo_workflows                        = true
+  # enable_aws_cloudwatch_metrics                = true
+  # enable_aws_privateca_issuer                  = true
+  # enable_cert_manager                          = true
+  # enable_cluster_autoscaler                    = true
+  # enable_secrets_store_csi_driver              = true
+  # enable_secrets_store_csi_driver_provider_aws = true
+  # enable_kube_prometheus_stack                 = true
+  # enable_external_dns                          = true
+  # enable_external_secrets                      = true
+  # enable_gatekeeper                            = true
+  # enable_ingress_nginx                         = true
 
   # Turn off mutation webhook for services to avoid ordering issue
-  enable_aws_load_balancer_controller = true
+  # enable_aws_load_balancer_controller = true
   aws_load_balancer_controller = {
     set = [{
       name  = "enableServiceMutatorWebhook"
@@ -155,10 +156,10 @@ module "eks_blueprints_addons" {
     }]
   }
 
-  enable_metrics_server    = true
-  enable_vpa               = true
-  enable_fargate_fluentbit = true
-  enable_aws_for_fluentbit = true
+  # enable_metrics_server    = true
+  # enable_vpa               = true
+  # enable_fargate_fluentbit = true
+  # enable_aws_for_fluentbit = true
   aws_for_fluentbit_cw_log_group = {
     create          = true
     use_name_prefix = true # Set this to true to enable name prefix
@@ -187,11 +188,11 @@ module "eks_blueprints_addons" {
       "${module.velero_backup_s3_bucket.s3_bucket_arn}/logs/*"
     ]
   }
+  # Uncomment this to check node termination handler issue
+  # enable_aws_node_termination_handler   = true
+  # aws_node_termination_handler_asg_arns = [for asg in module.eks.self_managed_node_groups : asg.autoscaling_group_arn]
 
-  enable_aws_node_termination_handler   = true
-  aws_node_termination_handler_asg_arns = [for asg in module.eks.self_managed_node_groups : asg.autoscaling_group_arn]
-
-  enable_karpenter                           = true
+  # enable_karpenter                           = true
   karpenter_enable_instance_profile_creation = true
   # ECR login required
   karpenter = {
@@ -199,13 +200,13 @@ module "eks_blueprints_addons" {
     repository_password = data.aws_ecrpublic_authorization_token.token.password
   }
 
-  enable_velero = true
+  # enable_velero = true
   ## An S3 Bucket ARN is required. This can be declared with or without a Prefix.
   velero = {
     s3_backup_location = "${module.velero_backup_s3_bucket.s3_bucket_arn}/backups"
   }
 
-  enable_aws_gateway_api_controller = true
+  # enable_aws_gateway_api_controller = true
   # ECR login required
   aws_gateway_api_controller = {
     repository_username = data.aws_ecrpublic_authorization_token.token.user_name
@@ -217,37 +218,37 @@ module "eks_blueprints_addons" {
   }
 
   # Pass in any number of Helm charts to be created for those that are not natively supported
-  helm_releases = {
-    prometheus-adapter = {
-      description      = "A Helm chart for k8s prometheus adapter"
-      namespace        = "prometheus-adapter"
-      create_namespace = true
-      chart            = "prometheus-adapter"
-      chart_version    = "4.2.0"
-      repository       = "https://prometheus-community.github.io/helm-charts"
-      values = [
-        <<-EOT
-          replicas: 2
-          podDisruptionBudget:
-            enabled: true
-        EOT
-      ]
-    }
-    gpu-operator = {
-      description      = "A Helm chart for NVIDIA GPU operator"
-      namespace        = "gpu-operator"
-      create_namespace = true
-      chart            = "gpu-operator"
-      chart_version    = "v23.9.0"
-      repository       = "https://nvidia.github.io/gpu-operator"
-      values = [
-        <<-EOT
-          operator:
-            defaultRuntime: containerd
-        EOT
-      ]
-    }
-  }
+  # helm_releases = {
+  #   prometheus-adapter = {
+  #     description      = "A Helm chart for k8s prometheus adapter"
+  #     namespace        = "prometheus-adapter"
+  #     create_namespace = true
+  #     chart            = "prometheus-adapter"
+  #     chart_version    = "4.2.0"
+  #     repository       = "https://prometheus-community.github.io/helm-charts"
+  #     values = [
+  #       <<-EOT
+  #         replicas: 2
+  #         podDisruptionBudget:
+  #           enabled: true
+  #       EOT
+  #     ]
+  #   }
+  #   gpu-operator = {
+  #     description      = "A Helm chart for NVIDIA GPU operator"
+  #     namespace        = "gpu-operator"
+  #     create_namespace = true
+  #     chart            = "gpu-operator"
+  #     chart_version    = "v23.9.0"
+  #     repository       = "https://nvidia.github.io/gpu-operator"
+  #     values = [
+  #       <<-EOT
+  #         operator:
+  #           defaultRuntime: containerd
+  #       EOT
+  #     ]
+  #   }
+  # }
 
   tags = local.tags
 }
