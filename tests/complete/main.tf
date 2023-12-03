@@ -189,7 +189,7 @@ module "eks_blueprints_addons" {
     ]
   }
   # Uncomment this to check node termination handler issue
-  # enable_aws_node_termination_handler   = true
+  enable_aws_node_termination_handler   = true
   # aws_node_termination_handler_asg_arns = [for asg in module.eks.self_managed_node_groups : asg.autoscaling_group_arn]
 
   # enable_karpenter                           = true
